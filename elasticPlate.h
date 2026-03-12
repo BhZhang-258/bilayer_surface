@@ -2,6 +2,7 @@
 #define ELASTICPLATE_H
 
 #include "eigenIncludes.h"
+#include "GeometryUtils.h"
 #include <fstream>
 
 struct triangularElement
@@ -9,6 +10,10 @@ struct triangularElement
 	int nv_1;
 	int nv_2;
 	int nv_3;
+
+	double alpha;
+	double beta;
+	double thickness;
 
 	Vector3d x_1;
 	Vector3d x_2;
@@ -23,9 +28,14 @@ struct triangularElement
 	Matrix2d bbar_1;
 	Matrix2d bbar_2;
 
-	double area;
+	
+	double area; // Initial Geometry area, not integral area
+
 
 	VectorXi arrayIndex;
+
+	double stretchingEnergy;
+	double bendingEnergy;
 };
 
 
@@ -40,9 +50,9 @@ struct Mesh
     MatrixXi EOpp;       // (nedges x 2) opposite vertex in each incident face, -1 if none
     MatrixXi FE;         // (nfaces x 3) edge id of each face edge
     MatrixXi FEorient;   // (nfaces x 3) 0 if (vj,vj+1)==EV order, else 1
-    MatrixXi Fbendvert;  // (nfaces x 6)
-    MatrixXi Fbenddof;   // (nfaces x 18)
-    VectorXi cEOpp;
+    MatrixXi Fbendvert;  // (nfaces x 6) the 3 face vertices followed by the 3 opposite vertices across each edge, -1 if none
+    MatrixXi Fbenddof;   // (nfaces x 18) 
+    VectorXi isVirtualNormal; 
 };
 
 class elasticPlate
@@ -89,6 +99,9 @@ class elasticPlate
 
 	std::vector<Vector3d> v_nodes;
 	std::vector<triangularElement> v_triangularElement;
+	std::vector<triangularElement> v_triangularElement2;
+	std::vector<Geometry::sFFinformation> v_sFFinf;
+
 
 	int nv;
 	int triangularNum;
@@ -105,7 +118,7 @@ class elasticPlate
 
 	void readInputEdge();
 	void readInputTriangular();
-
+	void initializeTriangular();
 	// boundary conditions
 	int* isConstrained;
 	int getIfConstrained(int k);
@@ -137,6 +150,8 @@ class elasticPlate
     int oppositeVertex(int edge, int faceidx);
     int vertexOppositeFaceEdge(int face, int vertidx);
 
+    
+
     int edgeVertex(int edge, int vertidx); 
     int edgeFace(int edge, int faceidx);
     int edgeOppositeVertex(int edge, int faceidx);
@@ -144,8 +159,14 @@ class elasticPlate
     int faceVertex(int face, int vertidx);
 	int faceEdge(int face, int vertidx);
 	int faceEdgeOrientation(int face, int vertidx);
+	
+	Matrix2d getFFF(int idx, Matrix<double, 4, 9>* derivative,  std::vector<Matrix<double, 9, 9> >* hessian);
+	Matrix2d getSFF(int idx, Matrix<double, 4, 18> *derivative, std::vector<Matrix<double, 18, 18>> *hessian);
+
 
 	private:
+
+	
 };
 
 #endif

@@ -1,0 +1,3 @@
+/home/zhangbh/Documents/bilayer_surface/build/CMakeFiles/simDER.dir
+/home/zhangbh/Documents/bilayer_surface/build/CMakeFiles/edit_cache.dir
+/home/zhangbh/Documents/bilayer_surface/build/CMakeFiles/rebuild_cache.dir

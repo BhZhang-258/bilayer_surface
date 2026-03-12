@@ -148,7 +148,7 @@ void world::plateBoundaryCondition()
 
 		if ( abs(v1_pos(0)) < 1e-3 && abs(v2_pos(0)) < 1e-3 )
 		{
-			//plate->mesh.cEOpp(i) = 1;
+			//plate->mesh.isVirtualNormal(i) = 1;
 		}
 	}
 }
@@ -227,10 +227,10 @@ void world::updateTimeStep()
 
 	plate->updateTimeStep();
 
-	if (render) 
-	{
-		cout << "time: " << currentTime << " iter=" << iter << endl;
-	}
+	
+	
+	cout << "time: " << currentTime << " iter=" << iter << endl;
+	
 
 	currentTime += deltaTime;
 		

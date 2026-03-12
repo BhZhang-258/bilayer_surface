@@ -37,7 +37,7 @@ elasticPlate::elasticPlate(double m_YoungM_1, double m_density_1, double m_thick
 	}
 	x0 = x;
 
-	readInputTriangular();
+	initializeTriangular();
 
 	setupMass();
 
@@ -48,6 +48,8 @@ elasticPlate::elasticPlate(double m_YoungM_1, double m_density_1, double m_thick
 		isConstrained[i] = 0;
     }
 }
+
+
 
 elasticPlate::~elasticPlate()
 {
@@ -183,7 +185,7 @@ Vector3d elasticPlate::getVelocity(int i)
 	return uCurrent;
 }
 
-void elasticPlate::readInputTriangular()
+void elasticPlate::initializeTriangular()
 {
 	triangularNum = 0;
 	v_triangularElement.clear();
@@ -202,119 +204,36 @@ void elasticPlate::readInputTriangular()
 		m_triangularElement.x_2 = getVertex(m_triangularElement.nv_2);
 		m_triangularElement.x_3 = getVertex(m_triangularElement.nv_3);
 
-		Vector3d e_1 = m_triangularElement.x_2 - m_triangularElement.x_1;
-		Vector3d e_2 = m_triangularElement.x_3 - m_triangularElement.x_1;
+		// m_triangularElement.alpha = alpha;
+		// m_triangularElement.beta  = beta;
+		// m_triangularElement.thickness = thickness;
 
+		Vector3d x_1 = getVertex(m_triangularElement.nv_1);
+		Vector3d x_2 = getVertex(m_triangularElement.nv_2);
+		Vector3d x_3 = getVertex(m_triangularElement.nv_3);
+
+		Vector3d e_1 = x_2 - x_1;
+		Vector3d e_2 = x_3 - x_1;
 		m_triangularElement.area = 0.5 * ( e_1.cross(e_2) ).norm();
 
-		m_triangularElement.abar_1(0, 0) = e_1.dot(e_1);
-		m_triangularElement.abar_1(0, 1) = e_1.dot(e_2);
-		m_triangularElement.abar_1(1, 0) = e_2.dot(e_1);
-		m_triangularElement.abar_1(1, 1) = e_2.dot(e_2);
-
+		m_triangularElement.abar_1 = getFFF(i, nullptr, nullptr);
+		
 		m_triangularElement.abarinv_1 = m_triangularElement.abar_1.inverse();
 
 		m_triangularElement.abar_2 = m_triangularElement.abar_1;
 		m_triangularElement.abarinv_2 = m_triangularElement.abarinv_1;
 
-		// compute b bar
-		Vector3i cfaceidx = mesh.F.row(i);
-		Vector3d x_temp_1 = getVertex(cfaceidx(0));
-		Vector3d x_temp_2 = getVertex(cfaceidx(1));
-		Vector3d x_temp_3 = getVertex(cfaceidx(2));
+		// double detA = m_triangularElement.abar_1.determinant();
+		
 
-		Matrix3d qc;
-		qc.col(0) = x_temp_1;
-		qc.col(1) = x_temp_2;
-		qc.col(2) = x_temp_3;
+		// b bar
 
-		Vector3d edge1 = x_temp_2 - x_temp_1;
-		Vector3d edge2 = x_temp_3 - x_temp_1;
-
-		Vector3d cNormal = edge1.cross(edge2);
-
-		Matrix3d oppNormals;
-		oppNormals.setZero();
-
-		for (int ii = 0; ii < 3; ii++)
-		{
-			int edge_idx = mesh.FE(i, ii);
-			int edge_orient = mesh.FEorient(i, ii);
-			Vector2i edge_vert = mesh.EV.row(edge_idx);
-
-			if (edge_orient == 1)
-			{
-				int temp = edge_vert(0);
-				edge_vert(0) = edge_vert(1);
-				edge_vert(1) = temp;
-			}
-
-			int oppvert = mesh.Fbendvert(i,3+ii); 
-
-			Vector3d v2 = getVertex( edge_vert(1) );
-			Vector3d v3 = getVertex( edge_vert(0) );
-
-			if (oppvert != -1) 
-			{
-				Vector3d v1 = getVertex(oppvert);
-
-				Vector3d oppNormal_temp = faceNormal(v1, v2, v3);
-
-            	oppNormals.col(ii) = oppNormal_temp;
-
-        	}
-        	else if (mesh.cEOpp(edge_idx) != 0) 
-        	{
-            	Vector3d vec = v3 - v2;
-            	Vector3d sysaxi = Vector3d::Zero();
-
-            	int cEOppVal = mesh.cEOpp(edge_idx);
-
-            	if (cEOppVal <= 3) 
-            	{
-                	sysaxi(cEOppVal - 1) = 1;
-            	} 
-            	else 
-            	{
-                	sysaxi(cEOppVal - 4) = -1;
-            	}
-
-            	Vector3d oppNormal = sysaxi.cross(vec.normalized()) * 1e5;
-            	oppNormals.col(ii) = oppNormal;
-        	}
-		}
-
-		//cout << " cNormal " << cNormal.transpose() << endl;
-		//cout << " oppNormals " << endl;
-		//cout << oppNormals << endl;
-
-		Vector3d II = Vector3d::Zero();
-
-    	for (int ii = 0; ii < 3; ii++)
-    	{
-        	Vector3d oppNormal = oppNormals.col(ii);
-        	Vector3d mvec = oppNormal + cNormal;        // averaged normal
-        	double mnorms = mvec.norm();                // norm of averaged normal
-
-       	 	int ip1 = (ii + 1) % 3;
-        	int ip2 = (ii + 2) % 3;
-
-        	Vector3d qvec = qc.col(ip1) + qc.col(ip2) - 2.0 * qc.col(ii);
-
-        	// Compute II[i]: projection of normal difference onto diagonal vector
-        	Vector3d diff_vec = qc.col(ip1) + qc.col(ip2) - 2.0 * qc.col(ii);
-        	II(ii) = diff_vec.dot(oppNormal) / mnorms;
-        }
-
-        m_triangularElement.bbar_1(0,0) = II(0)+II(1);
-        m_triangularElement.bbar_1(0,1) = II(0);
-        m_triangularElement.bbar_1(1,0) = II(0);
-        m_triangularElement.bbar_1(1,1) = II(0)+II(2);
+		
+		Matrix2d B = getSFF(i, nullptr, nullptr);
+		
+		m_triangularElement.bbar_1 = B;
 
         m_triangularElement.bbar_2 = m_triangularElement.bbar_1;
-
-        //cout << " bbar " << endl;
-        //cout << m_triangularElement.bbar << endl;
 
 		m_triangularElement.arrayIndex = VectorXi::Zero(9);
 
@@ -420,16 +339,16 @@ void elasticPlate::setupGeometry()
 
     buildMeshConnectivity(F);
 
-    std::cout << "nfaces = " << mesh.nfaces << "\n";
-    std::cout << "nedges = " << mesh.nedges << "\n";
-    std::cout << "EV:\n" << mesh.EV << "\n";
-    std::cout << "EF:\n" << mesh.EF << "\n";
-    std::cout << "EOpp:\n" << mesh.EOpp << "\n";
-    std::cout << "FE:\n" << mesh.FE << "\n";
-    std::cout << "FEorient:\n" << mesh.FEorient << "\n";
-    std::cout << "Fbendvert:\n" << mesh.Fbendvert << "\n";
-    std::cout << "Fbenddof:\n" << mesh.Fbenddof << "\n";
-    std::cout << "cEOpp:\n" << mesh.cEOpp << "\n";
+    // std::cout << "nfaces = " << mesh.nfaces << "\n";
+    // std::cout << "nedges = " << mesh.nedges << "\n";
+    // std::cout << "EV:\n" << mesh.EV << "\n";
+    // std::cout << "EF:\n" << mesh.EF << "\n";
+    // std::cout << "EOpp:\n" << mesh.EOpp << "\n";
+    // std::cout << "FE:\n" << mesh.FE << "\n";
+    // std::cout << "FEorient:\n" << mesh.FEorient << "\n";
+    // std::cout << "Fbendvert:\n" << mesh.Fbendvert << "\n";
+    // std::cout << "Fbenddof:\n" << mesh.Fbenddof << "\n";
+    // std::cout << "isVirtualNormal:\n" << mesh.isVirtualNormal << "\n";
 
     totalEdge = mesh.nedges;
 }
@@ -587,9 +506,7 @@ void elasticPlate::buildMeshConnectivity(MatrixXi F)
         }
     }
 
-        
-
-    mesh.cEOpp = VectorXi::Zero(mesh.nedges);
+    mesh.isVirtualNormal = VectorXi::Zero(mesh.nedges);  
 }
 
 Vector3d elasticPlate::faceNormal(const Vector3d& q0, const Vector3d& q1, const Vector3d& q2)
@@ -667,3 +584,51 @@ int elasticPlate::vertexOppositeFaceEdge(int face, int vertidx)
 
     return edgeOppositeVertex(edge, 1 - edgeorient);
 }
+
+Matrix2d elasticPlate::getFFF(int idx , 
+	Matrix<double, 4, 9>* derivative,
+    std::vector<Matrix<double, 9, 9> >* hessian)
+{
+	
+	Vector3i cfaceidx = mesh.F.row(idx);
+	Vector3d q0 = getVertex(cfaceidx(0));
+	Vector3d q1 = getVertex(cfaceidx(1));
+	Vector3d q2 = getVertex(cfaceidx(2));
+	Matrix2d A = Geometry::firstFundamentalForm( q0 , q1 , q2 , derivative,  hessian );
+
+	return A;
+}
+
+
+Matrix2d elasticPlate::getSFF(int idx , 
+	Matrix<double, 4, 18>* derivative,
+    std::vector<Matrix<double, 18, 18> >* hessian)
+{
+	// build sFF information for the face
+	Vector3d x_1 = getVertex(mesh.F(idx,0));
+	Vector3d x_2 = getVertex(mesh.F(idx,1));
+	Vector3d x_3 = getVertex(mesh.F(idx,2));
+
+	Geometry::sFFinformation sFFinf(x_1, x_2, x_3);
+	for (int v = 0; v < 3; v++)
+	{
+		
+		int adjnode = mesh.Fbendvert(idx, v + 3);
+		int edge = mesh.FE(idx, v);		// The adjnode and edge are corresponding, adjnode is the opposite vertex of the edge.
+		if ( adjnode != -1)
+		{ 
+			Vector3d position =  getVertex(adjnode);
+			sFFinf.setupAdjVertex(v, position);
+		}
+		else if (mesh.isVirtualNormal(edge) != 0) 	//setup virtual normal if need (for future)
+		{
+			Vector3d normal = {0, 0, 0};
+			sFFinf.setupVirtualNormal(v, normal);
+		}
+		
+	}
+	Matrix2d B = Geometry::secondFundamentalForm(sFFinf, derivative, hessian);
+
+	return B;
+}
+
