@@ -75,22 +75,11 @@ namespace Geometry
             Matrix<double, 3, 9>* derivative = nullptr,
             std::vector<Matrix<double, 9, 9> >* hessian = nullptr);
 
-    double edgeTheta(const Vector3d &edge1,const  Vector3d &edge2,
-					 const Vector3d &opp,  const  Vector3d &oppfaceVert, 
-                	 Matrix<double, 1, 12>* derivative = nullptr,
-					 Matrix<double, 12, 12> * hessian = nullptr);
-
-    double angle(const Eigen::Vector3d& v, const Eigen::Vector3d& w,
-                 const Eigen::Vector3d& axis, 
-                 Eigen::Matrix<double,1,9>* derivative = nullptr,
-                 Eigen::Matrix<double,9,9>* hessian = nullptr);
-    
-    double triangleAltitude(const Vector3d& q0, const Vector3d& q1, const Vector3d& q2,
-                        Eigen::Matrix<double, 1, 9>* derivative= nullptr,
-                        Eigen::Matrix<double, 9, 9>* hessian= nullptr);
     
     Matrix3d crossMat(Vector3d a);
     Eigen::Matrix3d crossMatrix(Eigen::Vector3d v);
+
+    Eigen::Matrix4d vecLeftMultiplyOperator(const Eigen::Matrix2d& A);
 
     Eigen::Matrix2d  firstFundamentalForm(const Vector3d &vi, const Vector3d &vj, const Vector3d &vk,
                     Matrix<double, 4, 9>* derivative,

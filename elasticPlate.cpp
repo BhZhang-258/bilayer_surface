@@ -216,7 +216,7 @@ void elasticPlate::initializeTriangular()
 		Vector3d e_2 = x_3 - x_1;
 		m_triangularElement.area = 0.5 * ( e_1.cross(e_2) ).norm();
 
-		m_triangularElement.abar_1 = getFFF(i, nullptr, nullptr);
+		m_triangularElement.abar_1 = getFFF(i, nullptr, nullptr) ;   // test with 0.5
 		
 		m_triangularElement.abarinv_1 = m_triangularElement.abar_1.inverse();
 

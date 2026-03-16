@@ -5,6 +5,7 @@
 #include "elasticPlate.h"
 #include "timeStepper.h"
 #include "GeometryUtils.h"
+#include "ConstitutiveModel.h"
 
 class elasticBendingForce
 {
@@ -13,7 +14,6 @@ public:
 	~elasticBendingForce();
 
 	void computeFb();
-    void computeFb_old(int kkk);
 	void computeJb();
     void setFirstJacobian();
 

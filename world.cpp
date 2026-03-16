@@ -155,6 +155,7 @@ void world::plateBoundaryCondition()
 
 void world::updateTimeStep()
 {
+	
 	//if ()
 	{
 		for (int i = 0; i < plate->v_triangularElement.size(); i++)

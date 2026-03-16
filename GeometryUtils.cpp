@@ -77,6 +77,20 @@ Eigen::Matrix3d crossMatrix(Eigen::Vector3d v)
     return ret;
 }
 
+Eigen::Matrix4d vecLeftMultiplyOperator(const Eigen::Matrix2d &A)
+{
+    // This function computes the 4x4 matrix T such that T * vec(M) = vec(A*M) for any 2x2 matrix M . 
+    // where vec(M) is the vectorization of M by stacking its columns.
+    Eigen::Matrix4d T;
+
+    T << A(0,0), 0,      A(0,1),  0,
+         0,      A(0,0), 0,       A(0,1),
+         A(1,0), 0,      A(1,1),  0,
+         0,      A(1,0), 0,       A(1,1);
+
+    return T;
+}
+
 Eigen::Matrix2d  firstFundamentalForm(const Vector3d &vi, const Vector3d &vj, const Vector3d &vk,
                                       Matrix<double, 4, 9>* derivative,
                                       std::vector<Matrix<double, 9, 9> >* hessian)

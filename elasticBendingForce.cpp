@@ -35,9 +35,21 @@ void elasticBendingForce::computeFb()
         double dA_2 = 0.5 * sqrt(abars_2.determinant());
 
 
-        Matrix<double, 4, 9 > aderiv;
-        std::vector<Matrix<double, 9 , 9 > > ahess;
-        Matrix2d a = plate->getFFF( kkk, &aderiv, &ahess );
+        Matrix<double, 4, 9> aderiv_t;
+        std::vector<Matrix<double, 9, 9>> ahess_t;
+
+        Matrix2d a = plate->getFFF(kkk, &aderiv_t, &ahess_t);
+
+        Matrix<double, 4, 18> aderiv = Matrix<double, 4, 18>::Zero();
+        aderiv.block<4, 9>(0, 0) = aderiv_t;  
+        
+        std::vector<Matrix<double, 18, 18>> ahess(4, Matrix<double, 18, 18>::Zero());
+        for (int i = 0; i < ahess_t.size(); i++)
+        {
+            ahess[i].block<9,9>(0,0) = ahess_t[i]; 
+        }
+        
+
 
 
         Matrix<double, 4, 18 > bderiv;
@@ -46,133 +58,88 @@ void elasticBendingForce::computeFb()
 
 
         double crossTermCoeff_1 = thickness_1 * thickness_1 / 8;
-        Matrix2d sigma_1 = abarinv_1 * (a - abars_1);
-
+       
         double crossTermCoeff_2 = - thickness_2 * thickness_2 / 8;
-        Matrix2d sigma_2 = abarinv_2 * (a - abars_2);
 
 
-        Matrix2d M_1 = abarinv_1 * (b - bbars_1);
-        Matrix2d M_2 = abarinv_2 * (b - bbars_2);
+        Matrix2d B_1 = (b - bbars_1);
+        Matrix2d B_2 = (b - bbars_2);
+        Matrix2d A_1 = (a - abars_1);
+        Matrix2d A_2 = (a - abars_2);
 
-        
-        VectorXd derivative;
+        Vector4d epsB_1 = Vector4d( B_1(0,0), B_1(0,1), B_1(1,0), B_1(1,1) );
+        Vector4d epsB_2 = Vector4d( B_2(0,0), B_2(0,1), B_2(1,0), B_2(1,1) );
+        Vector4d epsA_1 = Vector4d( A_1(0,0), A_1(0,1), A_1(1,0), A_1(1,1) );
+        Vector4d epsA_2 = Vector4d( A_2(0,0), A_2(0,1), A_2(1,0), A_2(1,1) );     
+
+        Matrix4d C_1 = Matrix<double, 4, 4>::Zero();
+		// C_1 << alpha_1 + 2 * beta_1,  alpha_1, 0,
+		// 	   alpha_1, alpha_1 + 2 * beta_1,  0,
+		// 		0,0,beta_1;
+		C_1(0,0) = alpha_1 + 2 * beta_1;
+		C_1(0,3) = alpha_1;
+		C_1(3,0) = alpha_1;
+		C_1(3,3) = alpha_1 + 2 * beta_1;
+		C_1(1,2) = 2 * beta_1;
+		C_1(2,1) = 2 * beta_1;
+
+        Matrix<double, 4, 4> C_2 = Matrix<double, 4, 4>::Zero();
+		C_2(0,0) = alpha_2 + 2 * beta_2;
+		C_2(0,3) = alpha_2;
+		C_2(3,0) = alpha_2;
+		C_2(3,3) = alpha_2 + 2 * beta_2;
+		C_2(1,2) = 2 * beta_2;
+		C_2(2,1) = 2 * beta_2;
+
+        Matrix4d T_1 = Geometry::vecLeftMultiplyOperator(abarinv_1);
+        Matrix4d T_2 = Geometry::vecLeftMultiplyOperator(abarinv_2);
+
+        Matrix<double, 18, 1> derivative;
         derivative.setZero(18, 1);
 
-        Matrix2d temp_1 = 0.5 * alpha_1 * M_1.trace() * abarinv_1 + beta_1 * M_1 * abarinv_1;
-        Matrix2d temp_2 = 0.5 * alpha_2 * M_2.trace() * abarinv_2 + beta_2 * M_2 * abarinv_2;
-
-        derivative =              2 * coeff_1 * dA_1 * bderiv.transpose() * Map<Vector4d>(temp_1.data());
-        derivative = derivative + 2 * coeff_2 * dA_2 * bderiv.transpose() * Map<Vector4d>(temp_2.data());
-
-
-        VectorXd crossDeriv_1 = crossTermCoeff_1 * dA_1 * ( aderiv.transpose() * Map<Vector4d>(temp_1.data()) );
-        VectorXd crossDeriv_2 = crossTermCoeff_2 * dA_2 * ( aderiv.transpose() * Map<Vector4d>(temp_2.data()) );
-
-        derivative.segment(0,9) = derivative.segment(0,9) + crossDeriv_1 + crossDeriv_2;
-
-        Matrix2d temp_3 = 0.5 * alpha_1 * sigma_1.trace() * abarinv_1 + beta_1 * sigma_1 * abarinv_1;
-        Matrix2d temp_4 = 0.5 * alpha_2 * sigma_2.trace() * abarinv_2 + beta_2 * sigma_2 * abarinv_2;
-
-        derivative = derivative + crossTermCoeff_1 * dA_1 * bderiv.transpose() * Map<Vector4d>(temp_3.data());
-        derivative = derivative + crossTermCoeff_2 * dA_2 * bderiv.transpose() * Map<Vector4d>(temp_4.data());
-
-        MatrixXd hessian;
+        Matrix<double, 18, 18> hessian;
         hessian.setZero(18, 18);
 
-        Matrix<double, 1, 18 > inner_1 = bderiv.transpose() * Map<Vector4d>(abarinv_1.data());
-        Matrix<double, 1, 18 > inner_2 = bderiv.transpose() * Map<Vector4d>(abarinv_2.data());
+        Matrix<double, 18, 1> derivative_t;
+        derivative.setZero(18, 1);
+        Matrix<double, 18, 18> hessian_t;
+        hessian.setZero(18, 18);
 
-        Matrix<double, 1, 18 > inner_3;
-        Matrix<double, 1, 18 > inner_4;
-        inner_3.setZero(1, 18);
-        inner_4.setZero(1, 18);
-        inner_3.segment(0,9) = aderiv.transpose() * Map<Vector4d>(abarinv_1.data());
-        inner_4.segment(0,9) = aderiv.transpose() * Map<Vector4d>(abarinv_2.data());
+        double StVK_b1 = Constitutive::stvk<18>(C_1, T_1, 
+			epsB_1, epsB_1,
+			bderiv,bderiv, 
+			bhess, bhess, 
+			&derivative_t, &hessian_t);	
+        		
+        derivative += coeff_1 * dA_1 * derivative_t;
+        hessian += coeff_1 * dA_1 * hessian_t;
+        
+        double StVK_c1 = Constitutive::stvk<18>(C_1, T_1, 
+			epsA_1, epsB_1,
+			aderiv,bderiv, 
+			ahess, bhess, 
+			&derivative_t, &hessian_t);
+        derivative += crossTermCoeff_1 * dA_1 * derivative_t;
+        hessian += crossTermCoeff_1 * dA_1 * hessian_t;
+
+        double StVK_b2 = Constitutive::stvk<18>(C_2, T_2, 
+			epsB_2, epsB_2,
+			bderiv,bderiv, 
+			bhess, bhess, 
+			&derivative_t, &hessian_t);	
+        		
+        derivative += coeff_2 * dA_2 * derivative_t;
+        hessian += coeff_2 * dA_2 * hessian_t;
+
+        double StVK_c2 = Constitutive::stvk<18>(C_2, T_2, 
+			epsA_2, epsB_2,
+			aderiv,bderiv, 
+			ahess, bhess, 
+			&derivative_t, &hessian_t);
+        derivative += crossTermCoeff_2 * dA_2 * derivative_t;
+        hessian += crossTermCoeff_2 * dA_2 * hessian_t;            
 
         
-        hessian  = coeff_1 * dA_1 * alpha_1 * inner_1.transpose() * inner_1;
-        hessian += coeff_2 * dA_2 * alpha_2 * inner_2.transpose() * inner_2;
-
-        hessian += crossTermCoeff_1 * dA_1 * 0.5 * alpha_1 * ( (inner_1.transpose() * inner_3) + (inner_3.transpose() * inner_1) );
-        hessian += crossTermCoeff_2 * dA_2 * 0.5 * alpha_2 * ( (inner_2.transpose() * inner_4) + (inner_4.transpose() * inner_2) );
-
-
-        Matrix2d Mainv_1 = M_1 * abarinv_1;
-        Matrix2d Mainv_2 = M_2 * abarinv_2;
-
-        Matrix2d Sainv_1 = sigma_1 * abarinv_1;
-        Matrix2d Sainv_2 = sigma_2 * abarinv_2;
-
-        for (int i = 0; i < 4; i++) 
-        {
-            hessian += coeff_1 * dA_1 * ( 2 * temp_1(i) ) * bhess[i];
-            hessian += coeff_2 * dA_2 * ( 2 * temp_2(i) ) * bhess[i];
-
-            hessian.block(0,0,9,9) = hessian.block(0,0,9,9) + crossTermCoeff_1 * dA_1 * ( temp_1(i) ) * ahess[i];
-            hessian.block(0,0,9,9) = hessian.block(0,0,9,9) + crossTermCoeff_2 * dA_2 * ( temp_2(i) ) * ahess[i];
-            hessian += crossTermCoeff_1 * dA_1 * ( temp_3(i) ) * bhess[i];
-            hessian += crossTermCoeff_2 * dA_2 * ( temp_4(i) ) * bhess[i];
-        }
-
-        
-        Matrix<double, 1, 18> inner001 = abarinv_1(0, 0) * bderiv.row(0) + abarinv_1(0, 1) * bderiv.row(2);
-        Matrix<double, 1, 18> inner011 = abarinv_1(0, 0) * bderiv.row(1) + abarinv_1(0, 1) * bderiv.row(3);
-        Matrix<double, 1, 18> inner101 = abarinv_1(1, 0) * bderiv.row(0) + abarinv_1(1, 1) * bderiv.row(2);
-        Matrix<double, 1, 18> inner111 = abarinv_1(1, 0) * bderiv.row(1) + abarinv_1(1, 1) * bderiv.row(3);
-        hessian += 2 * coeff_1 * dA_1 * beta_1 *  inner001.transpose() * inner001;
-        hessian += 2 * coeff_1 * dA_1 * beta_1 * (inner011.transpose() * inner101 + inner101.transpose() * inner011);
-        hessian += 2 * coeff_1 * dA_1 * beta_1 *  inner111.transpose() * inner111;
-
-        Matrix<double, 1, 18> inner002 = abarinv_2(0, 0) * bderiv.row(0) + abarinv_2(0, 1) * bderiv.row(2);
-        Matrix<double, 1, 18> inner012 = abarinv_2(0, 0) * bderiv.row(1) + abarinv_2(0, 1) * bderiv.row(3);
-        Matrix<double, 1, 18> inner102 = abarinv_2(1, 0) * bderiv.row(0) + abarinv_2(1, 1) * bderiv.row(2);
-        Matrix<double, 1, 18> inner112 = abarinv_2(1, 0) * bderiv.row(1) + abarinv_2(1, 1) * bderiv.row(3);
-        hessian += 2 * coeff_2 * dA_2 * beta_2 *  inner002.transpose() * inner002;
-        hessian += 2 * coeff_2 * dA_2 * beta_2 * (inner012.transpose() * inner102 + inner102.transpose() * inner012);
-        hessian += 2 * coeff_2 * dA_2 * beta_2 *  inner112.transpose() * inner112;
-
-        Matrix<double, 1, 18> inner003;
-        inner003.setZero(1, 18);
-        inner003.segment(0,9) = abarinv_1(0, 0) * aderiv.row(0) + abarinv_1(0, 1) * aderiv.row(2);
-        Matrix<double, 1, 18> inner013;
-        inner013.setZero(1, 18);
-        inner013.segment(0,9) = abarinv_1(0, 0) * aderiv.row(1) + abarinv_1(0, 1) * aderiv.row(3);
-        Matrix<double, 1, 18> inner103;
-        inner103.setZero(1, 18);
-        inner103.segment(0,9) = abarinv_1(1, 0) * aderiv.row(0) + abarinv_1(1, 1) * aderiv.row(2);
-        Matrix<double, 1, 18> inner113;
-        inner113.setZero(1, 18);
-        inner113.segment(0,9) = abarinv_1(1, 0) * aderiv.row(1) + abarinv_1(1, 1) * aderiv.row(3);
-
-        hessian += crossTermCoeff_1 * dA_1 * beta_1 *  inner001.transpose() * inner003;
-        hessian += crossTermCoeff_1 * dA_1 * beta_1 *  inner003.transpose() * inner001;
-        hessian += crossTermCoeff_1 * dA_1 * beta_1 * (inner011.transpose() * inner103 + inner103.transpose() * inner011);
-        hessian += crossTermCoeff_1 * dA_1 * beta_1 * (inner013.transpose() * inner101 + inner101.transpose() * inner013);
-        hessian += crossTermCoeff_1 * dA_1 * beta_1 *  inner111.transpose() * inner113;
-        hessian += crossTermCoeff_1 * dA_1 * beta_1 *  inner113.transpose() * inner111;
-
-        Matrix<double, 1, 18> inner004;
-        inner004.setZero(1, 18);
-        inner004.segment(0,9) = abarinv_2(0, 0) * aderiv.row(0) + abarinv_2(0, 1) * aderiv.row(2);
-        Matrix<double, 1, 18> inner014;
-        inner014.setZero(1, 18);
-        inner014.segment(0,9) = abarinv_2(0, 0) * aderiv.row(1) + abarinv_2(0, 1) * aderiv.row(3);
-        Matrix<double, 1, 18> inner104;
-        inner104.setZero(1, 18);
-        inner104.segment(0,9) = abarinv_2(1, 0) * aderiv.row(0) + abarinv_2(1, 1) * aderiv.row(2);
-        Matrix<double, 1, 18> inner114;
-        inner114.setZero(1, 18);
-        inner114.segment(0,9) = abarinv_2(1, 0) * aderiv.row(1) + abarinv_2(1, 1) * aderiv.row(3);
-
-        hessian += crossTermCoeff_2 * dA_2 * beta_2 *  inner002.transpose() * inner004;
-        hessian += crossTermCoeff_2 * dA_2 * beta_2 *  inner004.transpose() * inner002;
-        hessian += crossTermCoeff_2 * dA_2 * beta_2 * (inner012.transpose() * inner104 + inner104.transpose() * inner012);
-        hessian += crossTermCoeff_2 * dA_2 * beta_2 * (inner014.transpose() * inner102 + inner102.transpose() * inner014);
-        hessian += crossTermCoeff_2 * dA_2 * beta_2 *  inner112.transpose() * inner114;
-        hessian += crossTermCoeff_2 * dA_2 * beta_2 *  inner114.transpose() * inner112;
-
-
         VectorXi arrayNum = plate->mesh.Fbenddof.row(kkk);
 
         for (int j = 0; j < 18; j++)
@@ -200,7 +167,6 @@ void elasticBendingForce::computeFb()
 
 
 }
-
 void elasticBendingForce::computeJb()
 {
     ;

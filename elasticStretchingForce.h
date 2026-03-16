@@ -5,8 +5,10 @@
 #include "elasticPlate.h"
 #include "timeStepper.h"
 #include "GeometryUtils.h"
+#include "ConstitutiveModel.h"
 
 using namespace Geometry;
+using namespace Constitutive;
 
 class elasticStretchingForce
 {
@@ -14,11 +16,11 @@ public:
 	elasticStretchingForce(elasticPlate &m_plate, timeStepper &m_stepper);
 	~elasticStretchingForce();
 	void computeFs();
-    void computeFs_old(int i);
 
 	void computeJs();
     void setFirstJacobian();
 
+    
 private:
 	elasticPlate *plate;
     timeStepper *stepper;
