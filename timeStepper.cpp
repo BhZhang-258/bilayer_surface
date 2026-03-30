@@ -8,6 +8,8 @@ timeStepper::timeStepper(elasticPlate &m_plate)
 	uncon_dof = plate->uncons;
 	con_dof = plate->ncons;
 
+	totalForceVec.setZero(total_dof, 1);
+
 	GlobalForceVec.setZero(uncon_dof, 1);
     GlobalMotionVec.setZero(uncon_dof, 1);
     //GlobalJacobianMax.setZero(uncon_dof, uncon_dof);
@@ -15,6 +17,8 @@ timeStepper::timeStepper(elasticPlate &m_plate)
     sm1.resize(uncon_dof, uncon_dof);
 
     n = uncon_dof;
+
+
 }
 
 timeStepper::~timeStepper()
@@ -35,6 +39,7 @@ void timeStepper::addForce(int ind, double p)
 		mappedInd = plate->fullToUnconsMap[ind];
 		GlobalForceVec[mappedInd] = GlobalForceVec[mappedInd] + p; // subtracting elastic force
 	}
+	totalForceVec[ind] = totalForceVec[ind] + p;
 }
 
 void timeStepper::addJacobian(int ind1, int ind2, double p)
@@ -54,6 +59,7 @@ void timeStepper::setZero()
 	GlobalForceVec.setZero(uncon_dof, 1);
     GlobalMotionVec.setZero(uncon_dof, 1);
 
+	totalForceVec.setZero(total_dof, 1);
     for (MKL_INT i = 0; i < total_num; i++)
 	{
 		sm1.coeffRef(num11(i), num22(i)) = 0.0;

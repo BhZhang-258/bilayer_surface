@@ -17,7 +17,9 @@ public:
 	~elasticStretchingForce();
 	void computeFs();
 
-	void computeJs();
+    void computeFs_layer(int idx , int l);
+
+    void computeJs();
     void setFirstJacobian();
 
     
@@ -33,6 +35,9 @@ private:
     MatrixXd hessian_1_old;
     MatrixXd hessian_2_old;
 
+    Matrix2d A;
+    Matrix<double, 4, 9> fFFderiv;
+	std::vector <Eigen::Matrix<double, 9, 9> > fFFhess;
 
 };
 

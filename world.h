@@ -81,6 +81,8 @@ private:
 	elasticStretchingForce *m_stretchForce;
 	elasticBendingForce *m_elasticBendingForce;
 	dampingForce *m_dampingForce;
+
+	std::vector<int> loadedge;
 };
 
 #endif

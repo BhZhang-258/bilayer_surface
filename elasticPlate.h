@@ -5,30 +5,44 @@
 #include "GeometryUtils.h"
 #include <fstream>
 
+struct Layer {
+    double thickness;
+    // double alpha;
+    // double beta;
+
+	Matrix4d C; // Constitutive matrix
+	
+	Matrix2d M; // The rotation matrix of edge coordinate system(e1,e2) to material (u,v)
+	Matrix2d Minv;
+	Matrix2d Fg;
+
+	// Matrix2d abar_g; // the reference metric for the layer, which is M^T * G * M
+	// // // kronc is the kroncker product of epsilon_matertial = (M*abarinv) * A * Minv = kronc * A_vec
+	// // Matrix4d kronc; 
+
+	
+};
+
 struct triangularElement
 {
 	int nv_1;
 	int nv_2;
 	int nv_3;
 
-	double alpha;
-	double beta;
-	double thickness;
 
 	Vector3d x_1;
 	Vector3d x_2;
 	Vector3d x_3;
 
-	Matrix2d abar_1;
-	Matrix2d abarinv_1;
-
-	Matrix2d abar_2;
-	Matrix2d abarinv_2;
-
-	Matrix2d bbar_1;
-	Matrix2d bbar_2;
+	std::vector<Layer> layers;
 
 	
+
+	Matrix2d abar;
+	Matrix2d abarinv;
+
+	Matrix2d bbar;
+
 	double area; // Initial Geometry area, not integral area
 
 
@@ -68,6 +82,9 @@ class elasticPlate
 	//double thickness;
 	//double Possion;
 	double dt;
+	double growth_factor;
+	double fib_theta1;
+	double fib_theta2;
 	//double density;
 
 	//double alpha;

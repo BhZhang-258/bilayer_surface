@@ -127,42 +127,38 @@ void world::setPlateStepper()
 void world::plateBoundaryCondition()
 {
 
-	plate->setVertexBoundaryCondition(plate->getVertex(0), 0);
+	loadedge.clear();
 	
 	for (int i = 0; i < plate->nv; i++)
 	{
 		Vector3d xCurrent = plate->getVertex(i);
+		// plate->setOneVertexBoundaryCondition(xCurrent(2), i, 2);
 
 		if (xCurrent(0) < 1e-3)
 		{
-			//plate->setVertexBoundaryCondition(xCurrent, i);
+			plate->setOneVertexBoundaryCondition(xCurrent(0), i, 0);
+			// if (xCurrent(1) < 1e-3)
+			// {
+			// 	plate->setVertexBoundaryCondition(xCurrent , i);
+			// }
 		}
+		// if (abs(xCurrent(0)-1) < 1e-3)
+		// {
+		// 	plate->setOneVertexBoundaryCondition(xCurrent(0), i, 0);
+		// 	loadedge.push_back(3 * i );
+
+		// }
 	}
 
-	for (int i = 0; i < plate->mesh.nedges; i++)
-	{
-		int v1 = plate->mesh.EV(i,0);
-		int v2 = plate->mesh.EV(i,1);
-		Vector3d v1_pos = plate->getVertex(v1);
-		Vector3d v2_pos = plate->getVertex(v2);
-
-		if ( abs(v1_pos(0)) < 1e-3 && abs(v2_pos(0)) < 1e-3 )
-		{
-			//plate->mesh.isVirtualNormal(i) = 1;
-		}
-	}
 }
 
 void world::updateTimeStep()
 {
-	
-	//if ()
+	if (currentTime < 4.9 )
 	{
-		for (int i = 0; i < plate->v_triangularElement.size(); i++)
+		for (int i = 0; i < plate->triangularNum; i++)
 		{
-			plate->v_triangularElement[i].abar_1 = plate->v_triangularElement[i].abar_1 * 1.0001;
-
-			plate->v_triangularElement[i].abarinv_1 = plate->v_triangularElement[i].abar_1.inverse();
+			plate->v_triangularElement[i].layers[0].Fg *= 1 + 0.1*deltaTime; 
 		}
 	}
 
@@ -183,7 +179,7 @@ void world::updateTimeStep()
 		stepper->setZero();
 
 		m_inertialForce->computeFi();
-		m_gravityForce->computeFg();
+		// m_gravityForce->computeFg();
 		m_stretchForce->computeFs();
 		m_elasticBendingForce->computeFb();
 		m_dampingForce->computeFd();
@@ -209,7 +205,7 @@ void world::updateTimeStep()
 		if (solved == false)
 		{
 			m_inertialForce->computeJi();
-			m_gravityForce->computeJg();
+			// m_gravityForce->computeJg();
 			m_stretchForce->computeJs();
 			m_elasticBendingForce->computeJb();
 			m_dampingForce->computeJd();
@@ -237,10 +233,10 @@ void world::updateTimeStep()
 		
 	timeStep++;
 	
-	if (solved == false)
-	{
-		timeStep = Nstep; // we are exiting
-	}
+	// if (solved == false)
+	// {
+	// 	timeStep = Nstep; // we are exiting
+	// }
 }
 
 int world::simulationRunning()
@@ -251,6 +247,16 @@ int world::simulationRunning()
 	}
 	else 
 	{
+		// m_stretchForce->computeFs_layer(0, 0);
+		double RF = 0.0;
+		VectorXd F = stepper->totalForceVec;
+		std::vector<int>  RFvec;
+		for (int i = 0; i < loadedge.size(); i++)
+		{
+			RF += F[loadedge[i]];
+			cout <<  F[loadedge[i]] << endl;
+		}
+		cout << "Residual force on the loaded edge: " << RF << endl;
 		return -1;
 	}
 }

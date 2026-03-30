@@ -56,6 +56,17 @@ Vector3d faceNormal(
     return n;
 }
 
+Matrix4d kron(const Matrix2d &A, const Matrix2d &B)
+{
+    Matrix4d K;
+
+    K.block<2,2>(0,0) = A(0,0) * B;
+    K.block<2,2>(0,2) = A(0,1) * B;
+    K.block<2,2>(2,0) = A(1,0) * B;
+    K.block<2,2>(2,2) = A(1,1) * B;
+
+    return K;
+}
 
 Matrix3d crossMat(Vector3d a)
 {

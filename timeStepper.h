@@ -36,6 +36,8 @@ public:
     MatrixXd GlobalJacobianMax;
     VectorXd GlobalMotionVec;
 
+    VectorXd totalForceVec;
+
     SparseMatrix<double> sm1;
 
     void setZero();

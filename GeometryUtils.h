@@ -10,6 +10,7 @@
 
 namespace Geometry 
 {
+    constexpr double PI = 3.14159265358979323846;
     // Input information for calculating the second fundamental form
     class sFFinformation
     {
@@ -75,6 +76,7 @@ namespace Geometry
             Matrix<double, 3, 9>* derivative = nullptr,
             std::vector<Matrix<double, 9, 9> >* hessian = nullptr);
 
+    Matrix4d kron(const Matrix2d& A, const Matrix2d& B);
     
     Matrix3d crossMat(Vector3d a);
     Eigen::Matrix3d crossMatrix(Eigen::Vector3d v);

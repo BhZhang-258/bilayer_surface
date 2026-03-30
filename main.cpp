@@ -107,6 +107,7 @@ void display(void)
 
 int main(int argc,char *argv[])
 {
+	printf("Usage: %s [options]\n", argv[0]);
 	setInput inputData;
 	inputData = setInput();
 	inputData.LoadOptions(argv[1]);

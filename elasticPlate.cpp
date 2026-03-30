@@ -22,7 +22,13 @@ elasticPlate::elasticPlate(double m_YoungM_1, double m_density_1, double m_thick
 	alpha_2 = YoungM_2 * Possion_2 / ( 1 - Possion_2 * Possion_2 );
 	beta_2 = YoungM_2 / ( 2 * (1 + Possion_2) );
 
+	fib_theta1 = 0;
+	fib_theta2 = 0;
+
+
+
 	setupGeometry();
+	
 
 	ndof = 3 * nv;
 	x = VectorXd::Zero(ndof);
@@ -204,9 +210,7 @@ void elasticPlate::initializeTriangular()
 		m_triangularElement.x_2 = getVertex(m_triangularElement.nv_2);
 		m_triangularElement.x_3 = getVertex(m_triangularElement.nv_3);
 
-		// m_triangularElement.alpha = alpha;
-		// m_triangularElement.beta  = beta;
-		// m_triangularElement.thickness = thickness;
+		
 
 		Vector3d x_1 = getVertex(m_triangularElement.nv_1);
 		Vector3d x_2 = getVertex(m_triangularElement.nv_2);
@@ -216,24 +220,86 @@ void elasticPlate::initializeTriangular()
 		Vector3d e_2 = x_3 - x_1;
 		m_triangularElement.area = 0.5 * ( e_1.cross(e_2) ).norm();
 
-		m_triangularElement.abar_1 = getFFF(i, nullptr, nullptr) ;   // test with 0.5
+		m_triangularElement.abar = getFFF(i, nullptr, nullptr) ;
 		
-		m_triangularElement.abarinv_1 = m_triangularElement.abar_1.inverse();
+		m_triangularElement.bbar = getSFF(i, nullptr, nullptr);
 
-		m_triangularElement.abar_2 = m_triangularElement.abar_1;
-		m_triangularElement.abarinv_2 = m_triangularElement.abarinv_1;
 
-		// double detA = m_triangularElement.abar_1.determinant();
+		// layer set
+		m_triangularElement.layers.resize(2);
+		Vector2d e1 = e_1.head<2>();
+		Vector2d e2 = e_2.head<2>();
+
+		//layer 1 
+		double fib_theta = fib_theta1;
+		Vector2d u; // fiber direction 1
+		u << cos(fib_theta), sin(fib_theta);
+
+		Vector2d v; // fiber direction 2
+		v << -sin(fib_theta), cos(fib_theta);
+
+		Matrix2d M; // The rotation matrix of edge coordinate system(e1,e2) to material (u,v)
+		M << e1.dot(u), e2.dot(u),
+     		e1.dot(v), e2.dot(v);
+
+		m_triangularElement.layers[0].thickness = thickness_1;
+		m_triangularElement.layers[0].M = M;
+		m_triangularElement.layers[0].Minv = M.inverse();
+		
+		Matrix2d Fg = Matrix2d::Identity();
+		
+		m_triangularElement.layers[0].Fg = Fg;
 		
 
-		// b bar
+		Matrix2d G = Fg.transpose() * Fg;
+		// m_triangularElement.layers[0].abar_g = M.transpose() * G * M;
+		// Anisotropic material matrix
+		double d = 0;  // fiber stiffness ratio
 
-		
-		Matrix2d B = getSFF(i, nullptr, nullptr);
-		
-		m_triangularElement.bbar_1 = B;
 
-        m_triangularElement.bbar_2 = m_triangularElement.bbar_1;
+		double E_1 = YoungM_1 * (1+d);
+		double E_2 = YoungM_1;
+		double nu12 = Possion_1;
+		double G12 = E_2 / ( 2 * (1 + Possion_1) );
+		double nu21 = nu12 * (E_2 / E_1);
+		double denom = 1 - nu12 * nu21;
+		double C11 = E_1 / denom;
+		double C22 = E_2 / denom;
+		double C12 = (nu12 * E_2) / denom;  // or (nu21 * E_1) / denom
+		double mu_shear = G12;
+
+		m_triangularElement.layers[0].C << 
+		C11, 0,           0,           C12,
+		0,   0,           2*mu_shear,  0,
+		0,   2*mu_shear,  0,           0,
+		C12, 0,           0,           C22;
+		
+		//layer 2
+
+		fib_theta = fib_theta2;  // 
+		u.setZero(); // fiber direction 1
+		u << cos(fib_theta), sin(fib_theta);
+
+		v.setZero();; // fiber direction 2
+		v << -sin(fib_theta), cos(fib_theta);
+
+		M.setZero(); // The rotation matrix of edge coordinate system(e1,e2) to material (u,v)
+		M << e1.dot(u), e2.dot(u),
+     		e1.dot(v), e2.dot(v);
+
+		m_triangularElement.layers[1].thickness = thickness_2;
+		m_triangularElement.layers[1].M = M;
+		m_triangularElement.layers[1].Minv = M.inverse();
+		
+		Fg = Matrix2d::Identity();
+		m_triangularElement.layers[1].Fg = Fg;
+
+		G = Fg.transpose() * Fg;
+		// m_triangularElement.layers[1].abar_g = M.transpose() * G * M;
+		// Anisotropic material matrix
+		m_triangularElement.layers[1].C = m_triangularElement.layers[0].C;
+
+
 
 		m_triangularElement.arrayIndex = VectorXi::Zero(9);
 
@@ -294,6 +360,11 @@ void elasticPlate::setupGeometry()
 
 	ifstream inFile1;
 	inFile1.open("inputdata/nodesInput.txt");
+	if (!inFile1.is_open())
+	{
+		std::cerr << "Failed to open nodesInput.txt!" << std::endl;
+		exit(1);
+	}
 	v_nodes.clear();
 	double a, b, c;
 	while(inFile1 >> a >> b >> c)
@@ -311,6 +382,11 @@ void elasticPlate::setupGeometry()
 
 	ifstream inFile2;
 	inFile2.open("inputdata/triangleInput.txt");
+	if (!inFile2.is_open())
+	{
+		std::cerr << "Failed to open triangleInput.txt!" << std::endl;
+		exit(1);
+	}
 	v_triangularElement.clear();
 	int aa, bb, cc;
 	while(inFile2 >> aa >> bb >> cc)

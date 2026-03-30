@@ -14,6 +14,8 @@ public:
 	~elasticBendingForce();
 
 	void computeFb();
+	void computeFb_layer(int idx , int l);
+
 	void computeJb();
     void setFirstJacobian();
 
@@ -23,6 +25,15 @@ private:
 
     VectorXd derivative_old;
     MatrixXd hessian_old;
+
+	Matrix2d A;
+	Matrix2d B;
+	Matrix<double, 4, 18> aderiv;
+    std::vector<Matrix<double, 18, 18>> ahess;
+
+	Matrix<double, 4, 18 > bderiv;
+    std::vector<Matrix<double, 18 , 18 >> bhess;
+
 
 };
 
